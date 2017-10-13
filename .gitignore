@@ -1,0 +1,34 @@
+/.projectile
+/planning
+/results
+
+*~
+.#*
+
+# no remains from tex processing
+*.bib
+*.brf
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.ilg
+*.lof
+*.log
+*.lot
+*.nlo
+*.nls
+*.out
+*.toc
+*.el
+messages.txt
+
+# no sweave style class
+*.sty
+
+# no R history
+.Rhistory
+.RData
+
+# nothing from cache directory when using knitr
+/src/cache/
