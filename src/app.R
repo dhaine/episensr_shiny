@@ -1,6 +1,7 @@
 # Load packages -----------------------------------------------------
 library(shiny)
 library(shinythemes)
+library(rmarkdown)
 library(episensr)
 
 # Define UI ---------------------------------------------------------
@@ -9,10 +10,10 @@ ui <- navbarPage(theme = shinytheme("united"),
                  tabPanel("About",
                           column(1),
                           column(5, br(), br(), br(),
-                                 p("Quantitative bias analysis allows to estimate nonrandom errors in epidemiologic studies, assessing the magnitude and direction of biases, and quantifying their uncertainties. Every study has some random error due to its limited sample size, and is susceptible to systematic errors as well, from selection bias to the presence of (un)known confounders or information bias (measurement error, including misclassification). Bias analysis methods were compiled by Lash et al. in their book", a("Applying Quantitative Bias Analysis to Epidemiologic Data.", href="https://www.springer.com/us/book/9780387879604"), "This Shiny app implements two bias analyses, selection and misclassification biases. More can be found in the", code("episensr"), "package available for download on", a("R CRAN", href="https://CRAN.R-project.org/package=episensr"), ".")
+                                 p("Quantitative bias analysis allows to estimate nonrandom errors in epidemiologic studies, assessing the magnitude and direction of biases, and quantifying their uncertainties. Every study has some random error due to its limited sample size, and is susceptible to systematic errors as well, from selection bias to the presence of (un)known confounders or information bias (measurement error, including misclassification). Bias analysis methods were compiled by Lash et al. in their book", a("Applying Quantitative Bias Analysis to Epidemiologic Data.", href="https://www.springer.com/us/book/9780387879604"), "This Shiny app implements two bias analyses, selection and misclassification biases. More can be found in the", code("episensr"), "package available for download on", a("R CRAN", href="https://CRAN.R-project.org/package=episensr"), "."), br(), br(), br(), includeMarkdown("functions.md")
                                  ),
 column(5, br(), br(), br(),
-       wellPanel("Please report bugs at", a("https://github.com/dhaine/episensr_shiny/issues", href="https://github.com/dhaine/episensr_shiny/issues"), br(), br(), "Shiny app by", a("Denis Haine", href="https://www.denishaine.ca"))),
+       wellPanel("Please report bugs at", a("https://github.com/dhaine/episensr_shiny/issues", href="https://github.com/dhaine/episensr_shiny/issues"), br(), br(), "Shiny app by", a("Denis Haine", href="https://www.denishaine.ca"), br(), br(), "episensr version:", verbatimTextOutput("versioning", placeholder = TRUE))),
 column(1)
                  ),
                  tabPanel("Selection bias",
@@ -171,6 +172,9 @@ column(1)
 
 # Define server function --------------------------------------------
 server <- function(input, output) {
+
+    ## version
+    output$versioning <- renderPrint(packageVersion("episensr"))
 
     ## Data
     data1 = reactive({
