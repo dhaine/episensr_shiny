@@ -167,6 +167,140 @@ column(1)
                                          )
                               )
                           )
+                          ),
+                 tabPanel("Probabilistic sensitivity analysis",
+                          sidebarPanel(
+                              ## Input A cell
+                              numericInput(inputId = "a_cell3",
+                                           label = strong("Exposed + and Outcome +:"),
+                                           value = 45),
+                              
+                              ## Input B cell
+                              numericInput(inputId = "b_cell3",
+                                           label = strong("Exposed - and Outcome +:"),
+                                           value = 94),
+
+                              ## Input C cell
+                              numericInput(inputId = "c_cell3",
+                                           label = strong("Exposed + and Outcome -:"),
+                                           value = 257),
+
+                              ## Input D cell
+                              numericInput(inputId = "d_cell3",
+                                           label = strong("Exposed - and Outcome -:"),
+                                           value = 945),
+
+                              ## br() element to introduce extra vertical spacing ----
+                              br(),
+                              
+                              ## Choice of correction
+                              radioButtons(inputId = "misclass2",
+                                           label = "Misclassification of:",
+                                           choices = c("exposure", "outcome")),
+
+                              ## br() element to introduce extra vertical spacing ----
+                              br(),
+                              
+                              ## Correlations
+                              radioButtons(inputId = "corr",
+                                          "Correlations between case and non-case?",
+                                          choices = c("none", "yes")),
+                              uiOutput("corr_se"),
+                              uiOutput("corr_sp"),
+
+                              ## Replications
+                              numericInput("reps",
+                                          "Number of replications to run:",
+                                          value = 1000),
+
+                              ## Distribution for seca
+                              selectInput(inputId = "seca_parms",
+                                          label = "Distribution, sensitivity of exposure classification among those with the outcome",
+                                          choices = c("Uniform"        = "uniform",
+                                                      "Triangular"     = "triangular",
+                                                      "Trapezoidal"    = "trapezoidal",
+                                                      "Logit-logistic" = "logit-logistic",
+                                                      "Logit-normal"   = "logit-normal"),
+                                          selected = "trapezoidal"),
+                              uiOutput("seca_min"),
+                              uiOutput("seca_lower"),
+                              uiOutput("seca_upper"),
+                              uiOutput("seca_max"),
+                              uiOutput("seca_mode"),
+                              uiOutput("seca_location"),
+                              uiOutput("seca_scale"),
+                              ## Distribution for seexp
+                              conditionalPanel(
+                                  condition = "input.corr=='yes'",
+                              selectInput("seexp_parms",
+                                          "Distribution, sensitivity of exposure classification among those without the outcome:",
+                                          choices = c("Uniform" = "uniform",
+                                                      "Triangular" = "triangular",
+                                                      "Trapezoidal" = "trapezoidal",
+                                                      "Logit-logistic" = "logit-logistic",
+                                                      "Logit-normal" = "logit-normal"),
+                                          selected = "trapezoidal"),
+                              uiOutput("seexp_min"),
+                              uiOutput("seexp_max"),
+                              uiOutput("seexp_lower"),
+                              uiOutput("seexp_upper"),
+                              uiOutput("seexp_mode"),
+                              uiOutput("seexp_location"),
+                              uiOutput("seexp_scale")                                  
+                              ),
+                              ## Distribution for spca
+                              selectInput("spca_parms",
+                                          "Distribution, specificity of exposure classification among those with the outcome:",
+                                          choices = c("Uniform" = "uniform",
+                                                      "Triangular" = "triangular",
+                                                      "Trapezoidal" = "trapezoidal",
+                                                      "Logit-logistic" = "logit-logistic",
+                                                      "Logit-normal" = "logit-normal"),
+                                          selected = "trapezoidal"),
+                              uiOutput("spca_min"),
+                              uiOutput("spca_max"),
+                              uiOutput("spca_lower"),
+                              uiOutput("spca_upper"),
+                              uiOutput("spca_mode"),
+                              uiOutput("spca_location"),
+                              uiOutput("spca_scale"),
+                              ## Distribution for spexp
+                              conditionalPanel(
+                                  condition = "input.corr=='yes'",
+                                  selectInput("spexp_parms",
+                                              "Distribution, specificity of exposure classification among those without the outcome:",
+                                              choices = c("Uniform" = "uniform",
+                                                          "Triangular" = "triangular",
+                                                          "Trapezoidal" = "trapezoidal",
+                                                          "Logit-logistic" = "logit-logistic",
+                                                          "Logit-normal" = "logit-normal"),
+                                              selected = "trapezoidal"),
+                                  uiOutput("spexp_min"),
+                                  uiOutput("spexp_max"),
+                                  uiOutput("spexp_lower"),
+                                  uiOutput("spexp_upper"),
+                                  uiOutput("spexp_mode"),
+                                  uiOutput("spexp_location"),
+                                  uiOutput("spexp_scale")                                 
+                              )
+                          ),
+                          ## Output
+                          mainPanel(
+                              fluidRow(
+                                  column(width = 4,
+                                         ## Observed data
+                                         h3("Observed data"),
+                                         tableOutput(outputId = "obs_data3")
+                                         ),
+                                  column(width = 4,
+                                         h3("Observed measures of association"),
+                                         tableOutput(outputId = "obs_measures3"),
+                                         h3("Corrected measures of association"),
+                                         br(),
+                                         tableOutput(outputId = "adj_measures3")
+                                         )
+                              )
+                          )
                           )
                  )
 
@@ -191,7 +325,649 @@ server <- function(input, output) {
                                       c("Exposed +", "Exposed -")),
                       nrow = 2, byrow = TRUE))
     })
-    
+    data3 = reactive({
+        a = input$a_cell3; b = input$b_cell3; c = input$c_cell3; d = input$d_cell3
+        return(matrix(c(a, b, c, d),
+                      dimnames = list(c("Outcome +", "Outcome -"),
+                                      c("Exposed +", "Exposed -")),
+                      nrow = 2, byrow = TRUE))
+    })
+
+  ## Correlations
+  output$corr_se = renderUI(
+  {
+      if (input$corr == "yes")
+      {
+          sliderInput("corr_se",
+                      "Correlations between case and non-case sensitivities:",
+                      value = .8,
+                      min = .1,
+                      max = .99)
+      } else if (input$corr == "none")
+      {
+          textOutput("")
+          }
+  })
+  output$corr_sp = renderUI(
+  {
+      if (input$corr == "yes")
+      {
+          sliderInput("corr_sp",
+                      "Correlations between case and non-case specificities:",
+                      value = .8,
+                      min = .1,
+                      max = .99)
+      } else if (input$corr == "none")
+      {
+          textOutput("")
+          }
+  })
+
+  ## seca Distributions
+  output$seca_min = renderUI(
+  {
+      if (input$seca_parms == "trapezoidal")
+      {
+          sliderInput("seca_min",
+                      "Minimum",
+                      value = .75,
+                      min = 0,
+                      max = 1)
+      } else if (input$seca_parms == "uniform")
+      {
+          sliderInput("seca_min",
+                      "Minimum",
+                      value = .6,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$seca_lower = renderUI(
+    {
+      if (input$seca_parms == "triangular")
+      {
+          sliderInput("seca_lower",
+                     "Lower limit",
+                     value = .6,
+                     min = 0,
+                     max = 1)
+      } else if (input$seca_parms == "trapezoidal")
+      {
+          sliderInput("seca_lower",
+                      "Lower mode",
+                      value = .85,
+                      min = 0,
+                      max = 1)
+      } else if (input$seca_parms == "logit-logistic")
+      {
+          sliderInput("seca_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      } else if (input$seca_parms == "logit-normal")
+      {
+          sliderInput("seca_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      }
+    })
+      output$seca_upper = renderUI(
+  {
+      if (input$seca_parms == "triangular")
+      {
+          sliderInput("seca_upper",
+                     "Upper limit",
+                     value = .9,
+                     min = 0,
+                     max = 1)
+      } else if (input$seca_parms == "trapezoidal")
+      {
+          sliderInput("seca_upper",
+                      "Upper mode",
+                      value = .95,
+                      min = 0,
+                      max = 1)
+      } else if (input$seca_parms == "logit-logistic")
+      {
+          sliderInput("seca_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      } else if (input$seca_parms == "logit-normal")
+      {
+          sliderInput("seca_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$seca_max = renderUI(
+    {
+        if (input$seca_parms == "trapezoidal")
+        {
+            sliderInput("seca_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        } else if (input$seca_parms == "uniform")
+        {
+            sliderInput("seca_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$seca_mode = renderUI(
+    {
+        if (input$seca_parms == "triangular")
+        {
+            sliderInput("seca_mode",
+                       "Mode",
+                       value = .75,
+                       min = 0,
+                       max = 1)
+        }        
+    }
+    )
+    output$seca_location = renderUI(
+    {
+        if (input$seca_parms == "logit-logistic")
+        {
+            sliderInput("seca_location",
+                        "Location",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        } else if (input$seca_parms == "logit-normal")
+        {
+            sliderInput("seca_location",
+                        "Location",
+                        value = 1.45,
+                        min = 0,
+                        max = 5)
+        }
+    }
+    )
+    output$seca_scale = renderUI(
+    {
+        if (input$seca_parms == "logit-logistic")
+        {
+            sliderInput("seca_scale",
+                        "Scale",
+                        value = 0.8,
+                        min = 0,
+                        max = 1)
+        } else if (input$seca_parms == "logit-normal")
+        {
+            sliderInput("seca_scale",
+                        "Scale",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        }
+    }
+    )
+  ## seexp Distributions
+  output$seexp_min = renderUI(
+  {
+      if (input$seexp_parms == "trapezoidal")
+      {
+          sliderInput("seexp_min",
+                      "Minimum",
+                      value = .75,
+                      min = 0,
+                      max = 1)
+      } else if (input$seexp_parms == "uniform")
+      {
+          sliderInput("seexp_min",
+                      "Minimum",
+                      value = .6,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$seexp_lower = renderUI(
+    {
+      if (input$seexp_parms == "triangular")
+      {
+          sliderInput("seexp_lower",
+                     "Lower limit",
+                     value = .6,
+                     min = 0,
+                     max = 1)
+      } else if (input$seexp_parms == "trapezoidal")
+      {
+          sliderInput("seexp_lower",
+                      "Lower mode",
+                      value = .85,
+                      min = 0,
+                      max = 1)
+      } else if (input$seexp_parms == "logit-logistic")
+      {
+          sliderInput("seexp_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      } else if (input$seexp_parms == "logit-normal")
+      {
+          sliderInput("seexp_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      }
+    })
+      output$seexp_upper = renderUI(
+      {
+      if (input$seexp_parms == "triangular")
+      {
+          sliderInput("seexp_upper",
+                     "Upper limit",
+                     value = .9,
+                     min = 0,
+                     max = 1)
+      } else if (input$seexp_parms == "trapezoidal")
+      {
+          sliderInput("seexp_upper",
+                      "Upper mode",
+                      value = .95,
+                      min = 0,
+                      max = 1)
+      } else if (input$seexp_parms == "logit-logistic")
+      {
+          sliderInput("seexp_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      } else if (input$seexp_parms == "logit-normal")
+      {
+          sliderInput("seexp_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$seexp_max = renderUI(
+    {
+        if (input$seexp_parms == "trapezoidal")
+        {
+            sliderInput("seexp_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        } else if (input$seexp_parms == "uniform")
+        {
+            sliderInput("seexp_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$seexp_mode = renderUI(
+    {
+        if (input$seexp_parms == "triangular")
+        {
+            sliderInput("seexp_mode",
+                       "Mode",
+                       value = .75,
+                       min = 0,
+                       max = 1)
+        }
+    }
+    )
+    output$seexp_location = renderUI(
+    {
+        if (input$seexp_parms == "logit-logistic")
+        {
+            sliderInput("seexp_location",
+                        "Location",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        } else if (input$seexp_parms == "logit-normal")
+        {
+            sliderInput("seexp_location",
+                        "Location",
+                        value = 1.45,
+                        min = 0,
+                        max = 5)
+        }
+    }
+    )
+    output$seexp_scale = renderUI(
+    {
+        if (input$seexp_parms == "logit-logistic")
+        {
+            sliderInput("seexp_scale",
+                        "Scale",
+                        value = 0.8,
+                        min = 0,
+                        max = 1)
+        } else if (input$seexp_parms == "logit-normal")
+        {
+            sliderInput("seexp_scale",
+                        "Scale",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        }
+    }
+    )
+  ## spca Distributions
+  output$spca_min = renderUI(
+  {
+      if (input$spca_parms == "trapezoidal")
+      {
+          sliderInput("spca_min",
+                      "Minimum",
+                      value = .75,
+                      min = 0,
+                      max = 1)
+      } else if (input$spca_parms == "uniform")
+      {
+          sliderInput("spca_min",
+                      "Minimum",
+                      value = .6,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$spca_lower = renderUI(
+    {
+      if (input$spca_parms == "triangular")
+      {
+          sliderInput("spca_lower",
+                     "Lower limit",
+                     value = .6,
+                     min = 0,
+                     max = 1)
+      } else if (input$spca_parms == "trapezoidal")
+      {
+          sliderInput("spca_lower",
+                      "Lower mode",
+                      value = .85,
+                      min = 0,
+                      max = 1)
+      } else if (input$spca_parms == "logit-logistic")
+      {
+          sliderInput("spca_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      } else if (input$spca_parms == "logit-normal")
+      {
+          sliderInput("spca_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      }
+    })
+      output$spca_upper = renderUI(
+  {
+      if (input$spca_parms == "triangular")
+      {
+          sliderInput("spca_upper",
+                     "Upper limit",
+                     value = .9,
+                     min = 0,
+                     max = 1)
+      } else if (input$spca_parms == "trapezoidal")
+      {
+          sliderInput("spca_upper",
+                      "Upper mode",
+                      value = .95,
+                      min = 0,
+                      max = 1)
+      } else if (input$spca_parms == "logit-logistic")
+      {
+          sliderInput("spca_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      } else if (input$spca_parms == "logit-normal")
+      {
+          sliderInput("spca_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$spca_max = renderUI(
+    {
+        if (input$spca_parms == "trapezoidal")
+        {
+            sliderInput("spca_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        } else if (input$spca_parms == "uniform")
+        {
+            sliderInput("spca_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$spca_mode = renderUI(
+    {
+        if (input$spca_parms == "triangular")
+        {
+            sliderInput("spca_mode",
+                       "Mode",
+                       value = .75,
+                       min = 0,
+                       max = 1)
+        }        
+    }
+    )
+    output$spca_location = renderUI(
+    {
+        if (input$spca_parms == "logit-logistic")
+        {
+            sliderInput("spca_location",
+                        "Location",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        } else if (input$spca_parms == "logit-normal")
+        {
+            sliderInput("spca_location",
+                        "Location",
+                        value = 1.45,
+                        min = 0,
+                        max = 5)
+        }
+    }
+    )
+    output$spca_scale = renderUI(
+    {
+        if (input$spca_parms == "logit-logistic")
+        {
+            sliderInput("spca_scale",
+                        "Scale",
+                        value = 0.8,
+                        min = 0,
+                        max = 1)
+        } else if (input$spca_parms == "logit-normal")
+        {
+            sliderInput("spca_scale",
+                        "Scale",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        }
+    }
+    )
+  ## spexp Distributions
+  output$spexp_min = renderUI(
+  {
+      if (input$spexp_parms == "trapezoidal")
+      {
+          sliderInput("spexp_min",
+                      "Minimum",
+                      value = .75,
+                      min = 0,
+                      max = 1)
+      } else if (input$spexp_parms == "uniform")
+      {
+          sliderInput("spexp_min",
+                      "Minimum",
+                      value = .6,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$spexp_lower = renderUI(
+    {
+      if (input$spexp_parms == "triangular")
+      {
+          sliderInput("spexp_lower",
+                     "Lower limit",
+                     value = .6,
+                     min = 0,
+                     max = 1)
+      } else if (input$spexp_parms == "trapezoidal")
+      {
+          sliderInput("spexp_lower",
+                      "Lower mode",
+                      value = .85,
+                      min = 0,
+                      max = 1)
+      } else if (input$spexp_parms == "logit-logistic")
+      {
+          sliderInput("spexp_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      } else if (input$spexp_parms == "logit-normal")
+      {
+          sliderInput("spexp_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      }
+    })
+      output$spexp_upper = renderUI(
+  {
+      if (input$spexp_parms == "triangular")
+      {
+          sliderInput("spexp_upper",
+                     "Upper limit",
+                     value = .9,
+                     min = 0,
+                     max = 1)
+      } else if (input$spexp_parms == "trapezoidal")
+      {
+          sliderInput("spexp_upper",
+                      "Upper mode",
+                      value = .95,
+                      min = 0,
+                      max = 1)
+      } else if (input$spexp_parms == "logit-logistic")
+      {
+          sliderInput("spexp_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      } else if (input$spexp_parms == "logit-normal")
+      {
+          sliderInput("spexp_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$spexp_max = renderUI(
+    {
+        if (input$spexp_parms == "trapezoidal")
+        {
+            sliderInput("spexp_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        } else if (input$spexp_parms == "uniform")
+        {
+            sliderInput("spexp_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$spexp_mode = renderUI(
+    {
+        if (input$spexp_parms == "triangular")
+        {
+            sliderInput("spexp_mode",
+                       "Mode",
+                       value = .75,
+                       min = 0,
+                       max = 1)
+        }
+    }
+    )
+    output$spexp_location = renderUI(
+    {
+        if (input$spexp_parms == "logit-logistic")
+        {
+            sliderInput("spexp_location",
+                        "Location",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        } else if (input$spexp_parms == "logit-normal")
+        {
+            sliderInput("spexp_location",
+                        "Location",
+                        value = 1.45,
+                        min = 0,
+                        max = 5)
+        }
+    }
+    )
+    output$spexp_scale = renderUI(
+    {
+        if (input$spexp_parms == "logit-logistic")
+        {
+            sliderInput("spexp_scale",
+                        "Scale",
+                        value = 0.8,
+                        min = 0,
+                        max = 1)
+        } else if (input$spexp_parms == "logit-normal")
+        {
+            sliderInput("spexp_scale",
+                        "Scale",
+                        value = 0,
+                        min = 0,
+                        max = 1)
+        }
+    }
+    )
+
     ## Create an episensr reactive function
     episensrout = reactive({
         mat <- data1()
@@ -206,6 +982,90 @@ server <- function(input, output) {
                                  bias_parms = c(input$bias_parms12, input$bias_parms22,
                                                 input$bias_parms32, input$bias_parms42))
     })
+    episensrout_probsens = reactive({
+        mat <- data3()
+        dist_seca <- if (input$seca_parms == "trapezoidal") {
+                          dist_seca <- c(input$seca_min, input$seca_lower,
+                                          input$seca_upper, input$seca_max)
+                      } else if (input$seca_parms == "triangular") {
+                          dist_seca <- c(input$seca_lower, input$seca_upper,
+                                          input$seca_mode)
+                      } else if (input$seca_parms == "uniform") {
+                          dist_seca <- c(input$seca_min, input$seca_max)
+                      } else if (input$seca_parms == "logit-logistic") {
+                          dist_seca <- c(input$seca_location, input$seca_scale,
+                                          input$seca_lower, input$seca_upper)
+                      } else if (input$seca_parms == "logit-normal") {
+                          dist_seca <- c(input$seca_location, input$seca_scale,
+                                          input$seca_lower, input$seca_upper)
+                      }
+        dist_seexp <- if (input$seexp_parms == "trapezoidal") {
+                          dist_seexp <- c(input$seexp_min, input$seexp_lower,
+                                          input$seexp_upper, input$seexp_max)
+                      } else if (input$seexp_parms == "triangular") {
+                          dist_seexp <- c(input$seexp_lower, input$seexp_upper,
+                                          input$seexp_mode)
+                      } else if (input$seexp_parms == "uniform") {
+                          dist_seexp <- c(input$seexp_min, input$seexp_max)
+                      } else if (input$seexp_parms == "logit-logistic") {
+                          dist_seexp <- c(input$seexp_location, input$seexp_scale,
+                                          input$seexp_lower, input$seexp_upper)
+                      } else if (input$seexp_parms == "logit-normal") {
+                          dist_seexp <- c(input$seexp_location, input$seexp_scale,
+                                          input$seexp_lower, input$seexp_upper)
+                      }
+        dist_spca <- if (input$spca_parms == "trapezoidal") {
+                          dist_spca <- c(input$spca_min, input$spca_lower,
+                                          input$spca_upper, input$spca_max)
+                      } else if (input$spca_parms == "triangular") {
+                          dist_spca <- c(input$spca_lower, input$spca_upper,
+                                          input$spca_mode)
+                      } else if (input$spca_parms == "uniform") {
+                          dist_spca <- c(input$spca_min, input$spca_max)
+                      } else if (input$spca_parms == "logit-logistic") {
+                          dist_spca <- c(input$spca_location, input$spca_scale,
+                                          input$spca_lower, input$spca_upper)
+                      } else if (input$spca_parms == "logit-normal") {
+                          dist_spca <- c(input$spca_location, input$spca_scale,
+                                          input$spca_lower, input$spca_upper)
+                      }
+        dist_spexp <- if (input$spexp_parms == "trapezoidal") {
+                          dist_spexp <- c(input$spexp_min, input$spexp_lower,
+                                          input$spexp_upper, input$spexp_max)
+                      } else if (input$spexp_parms == "triangular") {
+                          dist_spexp <- c(input$spexp_lower, input$spexp_upper,
+                                          input$spexp_mode)
+                      } else if (input$spexp_parms == "uniform") {
+                          dist_spexp <- c(input$spexp_min, input$spexp_max)
+                      } else if (input$spexp_parms == "logit-logistic") {
+                          dist_spexp <- c(input$spexp_location, input$spexp_scale,
+                                          input$spexp_lower, input$spexp_upper)
+                      } else if (input$spexp_parms == "logit-normal") {
+                          dist_spexp <- c(input$spexp_location, input$spexp_scale,
+                                          input$spexp_lower, input$spexp_upper)
+                      }
+                      
+        set.seed(123)
+        mod <- if (input$corr == "none") {
+                   mod <- probsens(mat,
+                                   type = input$misclass2,
+                                   reps = input$reps,
+                                   seca.parms = list(input$seca_parms, dist_seca),
+                                   spca.parms = list(input$spca_parms, dist_spca)
+                                   )
+               } else if (input$corr == "yes") {
+                   mod <- probsens(mat,
+                                   type = input$misclass2,
+                                   reps = input$reps,
+                                   seca.parms = list(input$seca_parms, dist_seca),
+                                   seexp.parms = list(input$seca_parms, dist_seca),
+                                   spca.parms = list(input$spca_parms, dist_spca),
+                                   spexp.parms = list(input$spexp_parms, dist_spexp),
+                                   corr.se = input$corr_se,
+                                   corr.sp = input$corr_sp
+                                   )
+               }
+    })
 
     ## Output of observed data
     output$obs_data = renderTable({
@@ -215,6 +1075,11 @@ server <- function(input, output) {
 
     output$obs_data2 = renderTable({
         vals <- episensrout_misclass()
+        vals$obs.data
+    }, rownames = TRUE)
+
+    output$obs_data3 = renderTable({
+        vals <- episensrout_probsens()
         vals$obs.data
     }, rownames = TRUE)
 
@@ -239,7 +1104,12 @@ server <- function(input, output) {
         vals <- episensrout_misclass()
         vals$obs.measures
     }, rownames = TRUE)
-    
+
+    output$obs_measures3 = renderTable({
+        vals <- episensrout_probsens()
+        vals$obs.measures
+    }, rownames = TRUE)
+
     ## Output of corrected measures
     output$adj_measures = renderTable({
         vals <- episensrout()
@@ -250,7 +1120,12 @@ server <- function(input, output) {
         vals <- episensrout_misclass()
         vals$adj.measures[, 1]
     }, colnames = FALSE, rownames = TRUE)
-    
+
+    output$adj_measures3 = renderTable({
+        vals <- episensrout_probsens()
+        vals$adj.measures
+    }, colnames = FALSE, rownames = TRUE)
+
     ## Output of selection OR
     output$selbias_or = renderTable({
         vals <- episensrout()
