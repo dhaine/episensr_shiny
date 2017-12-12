@@ -3,6 +3,8 @@ library(shiny)
 library(shinythemes)
 library(rmarkdown)
 library(episensr)
+library(trapezoid)
+library(triangle)
 
 # Define UI ---------------------------------------------------------
 ui <- navbarPage(theme = shinytheme("united"),
@@ -211,7 +213,9 @@ column(1)
                               ## Replications
                               numericInput("reps",
                                           "Number of replications to run:",
-                                          value = 1000),
+                                          value = 20000,
+                                          min = 5000,
+                                          max = 50000, step = 5000),
 
                               ## Distribution for seca
                               selectInput(inputId = "seca_parms",
@@ -301,8 +305,38 @@ column(1)
                                          )
                               )
                           )
-                          )
-                 )
+                          ),
+tabPanel("Distributions",
+         fluidRow(
+             column(4,
+                    wellPanel(p("How your distribution look like? Check here the parameters you used in your probabilistic sensitivity analysis."),
+                        radioButtons("dstr", "Choose a distribution:",
+                                     list("Uniform" = "uniform",
+                                          "Triangular" = "triangular",
+                                          "Trapezoidal" = "trapezoidal",
+                                          "Logit-logistic" = "logit-logistic",
+                                          "Logit-normal" = "logit-normal"),
+                                     selected = "trapezoidal"),
+                        sliderInput("dstr_n", "Sample size:", value = 10000, min = 5000,
+                                    max = 50000, step = 5000),
+                        uiOutput("dstr_min"),
+                        uiOutput("dstr_lower"),
+                        uiOutput("dstr_upper"),
+                        uiOutput("dstr_max"),
+                        uiOutput("dstr_mode"),
+                        uiOutput("dstr_location"),
+                        uiOutput("dstr_scale")
+                    )
+                    ),
+             column(8,
+                    tabsetPanel(
+                        tabPanel("Plot", plotOutput("plot", height = "600px")),
+                        tabPanel("Summary", verbatimTextOutput("summary"))
+                    )
+                    )
+         )
+         )
+)
 
 # Define server function --------------------------------------------
 server <- function(input, output) {
@@ -483,14 +517,14 @@ server <- function(input, output) {
             sliderInput("seca_location",
                         "Location",
                         value = 0,
-                        min = 0,
-                        max = 1)
+                        min = -5,
+                        max = 5)
         } else if (input$seca_parms == "logit-normal")
         {
             sliderInput("seca_location",
                         "Location",
-                        value = 1.45,
-                        min = 0,
+                        value = 0,
+                        min = -5,
                         max = 5)
         }
     }
@@ -502,15 +536,15 @@ server <- function(input, output) {
             sliderInput("seca_scale",
                         "Scale",
                         value = 0.8,
-                        min = 0,
-                        max = 1)
+                        min = -10,
+                        max = 10, step = .05)
         } else if (input$seca_parms == "logit-normal")
         {
             sliderInput("seca_scale",
                         "Scale",
-                        value = 0,
-                        min = 0,
-                        max = 1)
+                        value = 0.8,
+                        min = -10,
+                        max = 10, step = .05)
         }
     }
     )
@@ -634,14 +668,14 @@ server <- function(input, output) {
             sliderInput("seexp_location",
                         "Location",
                         value = 0,
-                        min = 0,
-                        max = 1)
+                        min = -5,
+                        max = 5)
         } else if (input$seexp_parms == "logit-normal")
         {
             sliderInput("seexp_location",
                         "Location",
-                        value = 1.45,
-                        min = 0,
+                        value = 0,
+                        min = -5,
                         max = 5)
         }
     }
@@ -653,15 +687,15 @@ server <- function(input, output) {
             sliderInput("seexp_scale",
                         "Scale",
                         value = 0.8,
-                        min = 0,
-                        max = 1)
+                        min = -10,
+                        max = 10, step = .05)
         } else if (input$seexp_parms == "logit-normal")
         {
             sliderInput("seexp_scale",
                         "Scale",
-                        value = 0,
-                        min = 0,
-                        max = 1)
+                        value = .8,
+                        min = -10,
+                        max = 10, step = .05)
         }
     }
     )
@@ -785,14 +819,14 @@ server <- function(input, output) {
             sliderInput("spca_location",
                         "Location",
                         value = 0,
-                        min = 0,
-                        max = 1)
+                        min = -5,
+                        max = 5)
         } else if (input$spca_parms == "logit-normal")
         {
             sliderInput("spca_location",
                         "Location",
-                        value = 1.45,
-                        min = 0,
+                        value = 0,
+                        min = -5,
                         max = 5)
         }
     }
@@ -804,15 +838,15 @@ server <- function(input, output) {
             sliderInput("spca_scale",
                         "Scale",
                         value = 0.8,
-                        min = 0,
-                        max = 1)
+                        min = -10,
+                        max = 10, step = .05)
         } else if (input$spca_parms == "logit-normal")
         {
             sliderInput("spca_scale",
                         "Scale",
-                        value = 0,
-                        min = 0,
-                        max = 1)
+                        value = 0.8,
+                        min = -10,
+                        max = 10, step = .05)
         }
     }
     )
@@ -936,14 +970,14 @@ server <- function(input, output) {
             sliderInput("spexp_location",
                         "Location",
                         value = 0,
-                        min = 0,
-                        max = 1)
+                        min = -5,
+                        max = 5)
         } else if (input$spexp_parms == "logit-normal")
         {
             sliderInput("spexp_location",
                         "Location",
-                        value = 1.45,
-                        min = 0,
+                        value = 0,
+                        min = -5,
                         max = 5)
         }
     }
@@ -955,15 +989,166 @@ server <- function(input, output) {
             sliderInput("spexp_scale",
                         "Scale",
                         value = 0.8,
-                        min = 0,
-                        max = 1)
+                        min = -10,
+                        max = 10, step = .05)
         } else if (input$spexp_parms == "logit-normal")
         {
             sliderInput("spexp_scale",
                         "Scale",
-                        value = 0,
+                        value = .8,
+                        min = -10,
+                        max = 10, step = .05)
+        }
+    }
+    )
+    ## Distributions viz
+    output$dstr_min = renderUI(
+    {
+        if (input$dstr == "trapezoidal")
+        {
+            sliderInput("dstr_min",
+                        "Minimum",
+                        value = .75,
                         min = 0,
                         max = 1)
+        } else if (input$dstr == "uniform")
+        {
+            sliderInput("dstr_min",
+                        "Minimum",
+                        value = .6,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$dstr_lower = renderUI(
+    {
+      if (input$dstr == "triangular")
+      {
+          sliderInput("dstr_lower",
+                     "Lower limit",
+                     value = .6,
+                     min = 0,
+                     max = 1)
+      } else if (input$dstr == "trapezoidal")
+      {
+          sliderInput("dstr_lower",
+                      "Lower mode",
+                      value = .85,
+                      min = 0,
+                      max = 1)
+      } else if (input$dstr == "logit-logistic")
+      {
+          sliderInput("dstr_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      } else if (input$dstr == "logit-normal")
+      {
+          sliderInput("dstr_lower",
+                      "Lower bound shift",
+                      value = .5,
+                      min = 0,
+                      max = 1)
+      }
+    })
+      output$dstr_upper = renderUI(
+  {
+      if (input$dstr == "triangular")
+      {
+          sliderInput("dstr_upper",
+                     "Upper limit",
+                     value = .9,
+                     min = 0,
+                     max = 1)
+      } else if (input$dstr == "trapezoidal")
+      {
+          sliderInput("dstr_upper",
+                      "Upper mode",
+                      value = .95,
+                      min = 0,
+                      max = 1)
+      } else if (input$dstr == "logit-logistic")
+      {
+          sliderInput("dstr_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      } else if (input$dstr == "logit-normal")
+      {
+          sliderInput("dstr_upper",
+                      "Upper bound shift",
+                      value = .9,
+                      min = 0,
+                      max = 1)
+      }
+  })
+    output$dstr_max = renderUI(
+    {
+        if (input$dstr == "trapezoidal")
+        {
+            sliderInput("dstr_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        } else if (input$dstr == "uniform")
+        {
+            sliderInput("dstr_max",
+                        "Maximum",
+                        value = 1,
+                        min = 0,
+                        max = 1)
+        }
+    })
+    output$dstr_mode = renderUI(
+    {
+        if (input$dstr == "triangular")
+        {
+            sliderInput("dstr_mode",
+                       "Mode",
+                       value = .75,
+                       min = 0,
+                       max = 1)
+        }        
+    }
+    )
+    output$dstr_location = renderUI(
+    {
+        if (input$dstr == "logit-logistic")
+        {
+            sliderInput("dstr_location",
+                        "Location",
+                        value = 0,
+                        min = -5,
+                        max = 5)
+        } else if (input$dstr == "logit-normal")
+        {
+            sliderInput("dstr_location",
+                        "Location",
+                        value = 0,
+                        min = -5,
+                        max = 5)
+        }
+    }
+    )
+    output$dstr_scale = renderUI(
+    {
+        if (input$dstr == "logit-logistic")
+        {
+            sliderInput("dstr_scale",
+                        "Scale",
+                        value = 1.45,
+                        min = -10,
+                        max = 10, step = .05)
+        } else if (input$dstr == "logit-normal")
+        {
+            sliderInput("dstr_scale",
+                        "Scale",
+                        value = 1.45,
+                        min = -10,
+                        max = 10, step = .05)
         }
     }
     )
@@ -1066,6 +1251,28 @@ server <- function(input, output) {
                                    )
                }
     })
+    episensrout_dstr = reactive({
+        set.seed(123)
+        dist <- if (input$dstr == "trapezoidal") {
+                    dist <- rtrapezoid(input$dstr_n, input$dstr_min, input$dstr_lower,
+                                       input$dstr_upper, input$dstr_max)
+                } else if (input$dstr == "triangular") {
+                    dist <- rtriangle(input$dstr_n, input$dstr_lower, input$dstr_upper,
+                                      input$dstr_mode)
+                } else if (input$dstr == "uniform") {
+                    dist <- runif(input$dstr_n, input$dstr_min, input$dstr_max)
+                } else if (input$dstr == "logit-logistic") {
+                    u <- runif(input$dstr_n)
+                    w <- input$dstr_location + input$dstr_scale * (log(u / (1 - u)))
+                    dist <- input$dstr_lower + (input$dstr_upper - input$dstr_lower) *
+                        exp(w) / (1 + exp(w))
+                } else if (input$dstr == "logit-normal") {
+                    u <- runif(input$dstr_n)
+                    w <- input$dstr_location + input$dstr_scale * qnorm(u)
+                    dist <- input$dstr_lower + (input$dstr_upper - input$dstr_lower) *
+                        exp(w) / (1 + exp(w))
+                }
+    })
 
     ## Output of observed data
     output$obs_data = renderTable({
@@ -1131,6 +1338,17 @@ server <- function(input, output) {
         vals <- episensrout()
         vals$selbias.or
     }, colnames = FALSE)
+
+    ## Plot distribution
+    output$plot <- renderPlot({
+        dist <- episensrout_dstr()
+        plot(density(dist), main = "", xlab = "x", col = "orange",
+             cex.axis = 1.2, cex.lab = 1.2)
+    })
+    output$summary <- renderPrint({
+        dist <- episensrout_dstr()
+        summary(dist)
+    })
 }
 
 # Create the Shiny app object ---------------------------------------
