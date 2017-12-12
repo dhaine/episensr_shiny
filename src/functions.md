@@ -7,7 +7,7 @@
 | confounders.emm         | x          |                  |
 | confounders.limit       | x          |                  |
 | multidimBias            | x          |                  |
-| probsens                | x          |                  |
+| probsens                | x          | x                |
 | probsens.sel            | x          |                  |
 | probsens.conf           | x          |                  |
 | probsens.irr            | x          |                  |
